@@ -6,7 +6,7 @@ description: Git conventions for this challenge repo — first-commit hygiene, w
 # Git Flow
 
 Repo: `wishtree-gmakwana/assetera-coding-challange` on `origin`. Current branch is `master`; the
-default branch for PRs is `master`.
+default branch for PRs is `main`.
 
 **Only commit or push when the user asks.** Committing is the user's call, not a step you take to
 tidy up after yourself.
@@ -29,15 +29,14 @@ git add -A -n | head -50     # dry run: exactly what would be staged
 - **`.env`** — it is untracked but **not listed in `.gitignore`**, so `git add -A` will sweep it in.
   It holds `FINNHUB_API_KEY`. Add `.env` to `.gitignore` before the first `git add -A`, and if it is
   already staged, `git restore --staged .env`. A committed key needs rotation, not just a revert.
-- **`ECC-master/`** and **`.claude_ref/`** — unrelated vendored tooling, not part of the application.
+- **`ECC-main/`** and **`.claude_ref/`** — unrelated vendored tooling, not part of the application.
   Either gitignore them or stage paths explicitly. Do not let them into the hand-in diff.
 - `node_modules/`, `.next/`, build output — already covered by `.gitignore`.
 
 Confirm before staging:
 
 ```bash
-git check-ignore -v .env  
-   # each should print a matching rule
+git check-ignore -v .env ECC-main .claude_ref   # each should print a matching rule
 ```
 
 ## Pre-commit gate
@@ -47,7 +46,7 @@ changed, `cd frontend && npm run typecheck` is the minimum.
 
 ## Branches
 
-Create one; do not commit directly to `master`/`master` for feature work.
+Create one; do not commit directly to `master`/`main` for feature work.
 
 ```bash
 git checkout -b feature/live-ticker-ui
@@ -75,7 +74,7 @@ Commit in reviewable units: the formatter and its tests together, the stream cli
 ## Pull requests
 
 ```bash
-gh pr create --base master --title "frontend: live ticker UI" --body "$(cat <<'EOF'
+gh pr create --base main --title "frontend: live ticker UI" --body "$(cat <<'EOF'
 ## Summary
 - <what changed, in behaviour terms>
 
@@ -99,7 +98,7 @@ Once the PR is open, [.github/workflows/claude-pr-review.yml](../../../.github/w
 reviews it automatically using the `invariant-reviewer` checklist and posts a sticky comment. Two
 preconditions, both easy to miss:
 
-- the workflow must already exist **on `master`** — a workflow introduced by the PR itself does not run
+- the workflow must already exist **on `main`** — a workflow introduced by the PR itself does not run
   for that PR;
 - the `ANTHROPIC_API_KEY` repo secret must be set, and pushing workflow files needs a token with the
   `workflow` scope (`gh auth refresh -s workflow` if the push is rejected).
@@ -111,7 +110,7 @@ without waiting on CI or spending an API call.
 
 ```
 [ ] /verify green (frontend typecheck + build, backend tests)
-[ ] git status clean; .env, ECC-master/, .claude_ref/ absent from the tree
+[ ] git status clean; .env, ECC-main/, .claude_ref/ absent from the tree
 [ ] invariant-reviewer run on the full diff, verdict APPROVE or documented WARNING
 [ ] README or PR body states the changePercent decision (given value vs. corrected client-side)
 [ ] docker compose up --build works from a cold start
