@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Assetera — Live Ticker",
-  description: "Coding challenge starter",
+  description: "Live prices for tokenised and listed instruments.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
