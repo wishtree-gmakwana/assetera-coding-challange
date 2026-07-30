@@ -1,0 +1,104 @@
+name: Claude PR Review
+
+# Automated review of pull requests against this challenge's specific failure modes.
+# The checklist is NOT duplicated here — Claude reads .claude/agents/invariant-reviewer.md
+# from the checkout, so the local agent and CI stay in sync by construction.
+#
+# Requires the repository secret ANTHROPIC_API_KEY (Settings → Secrets and variables →
+# Actions). Without it the job fails fast rather than reviewing silently.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "feed/**"
+      - "docker-compose.yml"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A new push supersedes an in-flight review of the same PR.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so `git diff origin/${{ github.base_ref }}...HEAD` works.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Installed up front so the reviewer can run the real gates instead of
+      # reasoning about whether they would pass.
+      - name: Install dependencies
+        run: |
+          npm --prefix frontend ci
+          npm --prefix backend ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # One updated comment per PR instead of a new one per push.
+          use_sticky_comment: true
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }} in
+            ${{ github.repository }} — the Assetera live-ticker coding challenge.
+
+            First read these two files from the checkout and follow them as your
+            review instructions:
+
+            - `.claude/agents/invariant-reviewer.md` — the severity-ordered checklist,
+              the confidence filter, and the required output format. It is the source of
+              truth for this review; do not substitute a generic review checklist.
+            - `CLAUDE.md` — the price invariant, the SSE contract gaps, and the
+              cross-cutting conventions.
+
+            Then review the diff:
+
+                git diff origin/${{ github.base_ref }}...HEAD
+
+            Read whole changed files, not just the hunks — the precision bugs in this
+            repo live in the seams between functions.
+
+            Run the real gates and report their actual output:
+
+                npm --prefix frontend run typecheck
+                npm --prefix backend run typecheck   # only if backend/ changed
+                npm --prefix backend test            # only if backend/ changed
+
+            Scope notes for this repo:
+
+            - `frontend/` is the deliverable. `backend/`, `feed/`, and `docker-compose.yml`
+              are given fixtures — changes to them are scope creep unless the PR body
+              explains why, so flag them rather than reviewing them on their merits.
+            - The known `changePercent` defect (divides by the last price, casts via
+              `Number`) is pre-existing given code. Only raise it if this diff copies the
+              pattern into the frontend.
+            - There is no linter or formatter in this repo. Do not report style or
+              formatting opinions; typecheck is the only static gate that exists.
+
+            Post your findings as a single review comment using the output format and the
+            summary table from `invariant-reviewer.md`, ending with the verdict line. Apply
+            its confidence filter strictly: cite `file:line`, name a concrete input and its
+            wrong outcome, and confirm the issue is not already handled elsewhere.
+
+            If the diff is clean, say so and post the verdict APPROVE with a zero-count
+            table. A clean review is a valid review — do not manufacture findings.
+
+            Do not push commits, do not edit files, and do not approve or request changes
+            via the GitHub review API. Comment only.
+          claude_args: |
+            --max-turns 20
+            --model claude-opus-5
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git status),Bash(npm run typecheck:*),Bash(npm test:*),Bash(npx vitest run:*)"
