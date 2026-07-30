@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+out/
+build/
+
+*.log
+npm-debug.log*
+
+.DS_Store
+.idea/
+.vscode/
+
+.env

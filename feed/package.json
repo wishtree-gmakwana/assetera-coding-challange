@@ -1,0 +1,13 @@
+{
+  "name": "@challenge/feed",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Synthetic market-data feed. Stands in for the Finnhub websocket in local development.",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1"
+  }
+}

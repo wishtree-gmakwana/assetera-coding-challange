@@ -1,0 +1,48 @@
+name: assetera-live-ticker
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  feed:
+    build: ./feed
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      PORT: "4000"
+      HOST: 0.0.0.0
+    ports:
+      - "4000:4000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      # Reachable from the browser
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+      # Reachable from inside the compose network
+      API_BASE_URL: http://backend:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
